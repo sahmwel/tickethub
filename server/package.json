@@ -1,0 +1,35 @@
+{
+  "name": "sahm-tickethub-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node scripts/seed.js",
+    "seed:attendees": "node scripts/seed-attendees.js"
+  },
+  "dependencies": {
+    "axios": "^1.19.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.6.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "mysql2": "^3.23.3",
+    "nanoid": "^6.0.1",
+    "node-cron": "^4.6.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.14",
+    "nodemon": "^3.1.14",
+    "pdfkit": "^0.19.1",
+    "qrcode": "^1.5.4",
+    "uuid": "^14.0.1"
+  }
+}

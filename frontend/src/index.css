@@ -1,0 +1,100 @@
+/* stylelint-disable at-rule-no-unknown */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* stylelint-enable at-rule-no-unknown */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0a0a0c;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(242, 179, 61, 0.08), transparent),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, transparent 1px, transparent 2px);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0c;
+}
+::-webkit-scrollbar-thumb {
+  background: #26262c;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a42;
+}
+
+*:focus-visible {
+  outline: 2px solid #f2b33d;
+  outline-offset: 3px;
+}
+
+/* Ticket stub perforation */
+.perforated {
+  background-image: radial-gradient(circle, #0a0a0c 2.5px, transparent 2.6px);
+  background-size: 14px 14px;
+  background-position: center;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.text-outline {
+  -webkit-text-stroke: 1.5px #f2b33d;
+  color: transparent;
+}
+
+/* ─── Navbar & Footer Logo ───────────────────────────────────────── */
+.navbar-logo {
+  height: 80px;   /* bigger logo — overflows the fixed navbar height */
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+}
+
+.footer-logo {
+  height: 90px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Fixed navbar height — logo overflows this, bar itself stays the same size */
+.navbar-container {
+  height: 72px;
+  overflow: visible;
+}
+
+/* ─── Mobile Adjustments ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .navbar-logo {
+    height: 48px;
+  }
+  .footer-logo {
+    height: 56px;
+  }
+  .navbar-container {
+    height: 60px;
+  }
+}
+
+/* ─── Reduced Motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
