@@ -6,7 +6,9 @@ import cookieParser from "cookie-parser";
 import { requireAuth, requireAdmin } from "./middleware/auth.js";
 import cron from "node-cron";
 import { checkExpiredInstallments } from "./lib/wallet.js";
+import pool from "./lib/db.js";
 
+// ─── Routes ───────────────────────────────────────────────────────────
 import organizerRouter from "./routes/organizer.js";
 import adminRouter from "./routes/admin.js";
 import usersRouter from "./routes/users.js";
@@ -41,7 +43,7 @@ const corsOptions = {
     : 'http://localhost:5173',
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-api-key"],
 };
 
 app.use(cors(corsOptions));
@@ -69,9 +71,54 @@ app.get("/health", (_req, res) =>
 app.use("/api/contact", contactRouter);
 app.use("/api/geocode", geocodeRouter);
 app.use("/api/tickets", ticketsRouter);
-app.use("/api/payments", paymentsRouter);            // ✅ CHANGED: removed "/webhook"
+app.use("/api/payments", paymentsRouter);
 app.use("/auth", authRouter);
 app.use("/api/events", eventsRouter);
+
+// ─── Referral handler ──────────────────────────────────────────────
+const getReferrals = async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey || apiKey !== process.env.MISS_NAIJA_API_KEY) {
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid or missing API key.'
+    });
+  }
+
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        c.name,
+        c.ref_code,
+        COUNT(DISTINCT p.id) AS referral_count,
+        COUNT(o.id) AS tickets_sold,
+        COALESCE(SUM(o.amount_total), 0) AS total_revenue
+      FROM beauty_contestants c
+      LEFT JOIN profiles p ON p.event_referred_by = c.ref_code
+      LEFT JOIN orders o ON o.user_id = p.id
+      GROUP BY c.id, c.name, c.ref_code
+      ORDER BY referral_count DESC, tickets_sold DESC;
+    `);
+
+    res.json({
+      success: true,
+      event: 'Miss Naija 2026',
+      last_updated: new Date().toISOString(),
+      data: rows.map(row => ({
+        ...row,
+        referral_count: parseInt(row.referral_count, 10) || 0,
+        tickets_sold: parseInt(row.tickets_sold, 10) || 0,
+        total_revenue: parseFloat(row.total_revenue) || 0
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Referral error:', error);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+};
+
+// ─── Public referral endpoint for Miss Naija ──────────────────────
+app.get("/api/missnaija/referrals", getReferrals);
 
 // ─── Authenticated routes ──────────────────────────────────────────
 app.use("/api/orders", requireAuth, ordersRouter);

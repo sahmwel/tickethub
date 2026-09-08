@@ -16,34 +16,47 @@ const COOKIE_OPTS = {
 
 // ─── Sign Up ──────────────────────────────
 router.post('/signup', async (req, res) => {
-  const { email, password, fullName, role, country } = req.body;
+  const { email, password, fullName, role, country, referredBy, currency } = req.body;
 
   if (!email || !password || !fullName) {
     return res.status(400).json({ success: false, error: 'Email, password, and full name are required' });
   }
 
   try {
-    // ✅ Prevent duplicate accounts producing a confusing DB error later
+    // ✅ Prevent duplicate accounts
     const [existing] = await pool.query(`SELECT id FROM profiles WHERE email = ?`, [email]);
     if (existing.length > 0) {
       return res.status(409).json({ success: false, error: 'An account with this email already exists' });
     }
 
+    // ✅ Validate referral code (if provided)
+    let validRef = null;
+    if (referredBy) {
+      const [contestant] = await pool.query(
+        `SELECT ref_code FROM beauty_contestants WHERE ref_code = ?`,
+        [referredBy]
+      );
+      if (contestant.length > 0) {
+        validRef = referredBy;
+      }
+      // If invalid, we simply ignore it and set validRef to null (no error)
+    }
+
     const userId = uuidv4();
     const hashed = await bcrypt.hash(password, 10);
 
-    // ✅ FIX: `password` column added to both the column list and the values array.
-    // Previously `hashed` was computed but never persisted, so every account
-    // had a NULL password and could never log in.
+    // ✅ Insert with event_referred_by column
     await pool.query(
-      `INSERT INTO profiles (id, email, full_name, password, role, country, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [userId, email, fullName, hashed, role || 'attendee', country || 'Nigeria']
+      `INSERT INTO profiles (id, email, full_name, password, role, country, event_referred_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [userId, email, fullName, hashed, role || 'attendee', country || 'Nigeria', validRef]
     );
 
+    // ✅ Insert wallet with the correct currency (fallback to NGN)
+    const walletCurrency = currency || 'NGN';
     await pool.query(
-      `INSERT INTO wallets (user_id, balance, currency) VALUES (?, 0, 'NGN')`,
-      [userId]
+      `INSERT INTO wallets (user_id, balance, currency) VALUES (?, 0, ?)`,
+      [userId, walletCurrency]
     );
 
     const token = jwt.sign(
@@ -80,9 +93,6 @@ router.post('/login', async (req, res) => {
 
     const user = rows[0];
 
-    // ✅ Guard against legacy rows that still have a NULL password
-    // (accounts created before this fix). bcrypt.compare throws on a
-    // non-string hash instead of just returning false.
     if (!user.password) {
       return res.status(401).json({
         success: false,

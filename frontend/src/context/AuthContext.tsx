@@ -13,7 +13,9 @@ interface AuthContextValue {
     password: string,
     fullName: string,
     role: "admin" | "organizer" | "attendee",
-    country?: string
+    country?: string,
+    referredBy?: string,
+    currency?: string   // 👈 NEW: currency parameter
   ) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: string | null }>;
@@ -30,9 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        // silent401: this is a session CHECK, not an authenticated action.
-        // A 401 here just means "not logged in yet" — it must NOT trigger
-        // apiClient's redirect-to-login side effect.
         const response = await apiGet<{ profile: Profile }>("/auth/me", undefined, {
           silent401: true,
         });
@@ -52,8 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ─── Refresh profile ─────────────────────────────────────────────
-  // Returns the fresh profile (or null) so callers like signIn() don't
-  // have to rely on a stale `user` closure value.
   async function refreshProfile(): Promise<Profile | null> {
     try {
       const response = await apiGet<{ profile: Profile }>("/auth/me", undefined, {
@@ -77,14 +74,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     fullName: string,
     role: "admin" | "organizer" | "attendee",
-    country: string = "Nigeria"
+    country: string = "Nigeria",
+    referredBy?: string,
+    currency?: string   // 👈 NEW
   ): Promise<{ error: string | null }> {
     try {
       const response = await apiPost<{
         message: string; success: boolean; userId: string; email: string; role: string
       }>(
         "/auth/signup",
-        { email, password, fullName, role, country }
+        { email, password, fullName, role, country, referredBy, currency }   // 👈 include currency
       );
       if (!response.success) {
         return { error: response.message || "Signup failed" };
@@ -109,7 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!response.success) {
         return { error: response.message || "Login failed", profile: null };
       }
-      // ✅ use the freshly-fetched profile instead of the stale `user` closure
       const freshProfile = await refreshProfile();
       return { error: null, profile: freshProfile };
     } catch (error) {

@@ -1,6 +1,6 @@
 // frontend/src/pages/Signup.tsx
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { COUNTRIES, getCountryConfig, getCurrencySymbol } from "../lib/constants";
 import { Globe, AlertCircle, Eye, EyeOff } from "lucide-react";
@@ -8,6 +8,9 @@ import { Globe, AlertCircle, Eye, EyeOff } from "lucide-react";
 export default function Signup() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const ref = searchParams.get('ref') || ''; // Capture referral code from URL
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,11 +23,13 @@ export default function Signup() {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [referredBy, setReferredBy] = useState(ref); // Store referral
 
   const countryConfig = getCountryConfig(country);
   const currencySymbol = getCurrencySymbol(countryConfig.currency);
+  const selectedCurrency = countryConfig.currency; // 👈 get currency
 
-  // Password strength
+  // Password strength (unchanged)
   useEffect(() => {
     let strength = 0;
     if (password.length >= 6) strength++;
@@ -35,7 +40,7 @@ export default function Signup() {
     setPasswordStrength(Math.min(strength, 5));
   }, [password]);
 
-  // Cooldown timer
+  // Cooldown timer (unchanged)
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -55,16 +60,23 @@ export default function Signup() {
     }
 
     try {
-      const { error } = await signUp(email, password, fullName, role, country);
+      // 👇 Pass referredBy AND currency as 6th and 7th arguments
+      const { error } = await signUp(
+        email,
+        password,
+        fullName,
+        role,
+        country,
+        referredBy,
+        selectedCurrency   // <-- NEW
+      );
       if (error) {
         setError(error);
-        // Start cooldown on any error (especially rate limit)
         setCooldown(60);
         setLoading(false);
         return;
       }
 
-      // Success – redirect to verification
       setLoading(false);
       navigate("/verify-email");
     } catch (err) {
@@ -99,6 +111,13 @@ export default function Signup() {
         </div>
 
         <div className="bg-panel border border-line rounded-2xl p-6">
+          {/* Show referral banner if present */}
+          {referredBy && (
+            <div className="mb-4 p-2 bg-gold/10 border border-gold/30 rounded-xl text-center text-sm text-gold">
+              🎯 You are supporting contestant <span className="font-bold">{referredBy}</span>
+            </div>
+          )}
+
           {/* Role Selection */}
           <div className="grid grid-cols-2 gap-2 mb-4">
             <button
